@@ -1,5 +1,4 @@
 import './App.css';
-import Feed from './components/Feed';
 import Navbar from './components/Navbar';
 import {useAuthState} from 'react-firebase-hooks/auth';
 import { auth } from './firebase';
@@ -9,6 +8,7 @@ import {
   BrowserRouter,
 } from "react-router-dom";
 import UserPage from './pages/UserPage';
+import Main from './pages/Main';
 
 function App() {
   const [user] = useAuthState(auth);
@@ -22,7 +22,7 @@ function App() {
               index
               element={
                 <>
-                  {user ? <Feed userID=''/> : <div className="color-1 text-xl text-center m-5">Log in to view the feed.</div>}
+                  {user ? <Main/> : <div className="color-1 text-xl text-center m-5">Log in to view the feed.</div>}
                 </>
               }
             />

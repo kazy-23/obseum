@@ -3,11 +3,12 @@ import React, {useState} from 'react'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth, db } from '../firebase'
 
-function Post({setLoading}) {
+function Post({refresh}) {
   const [user] = useAuthState(auth);
   const [msg, setMsg] = useState('');
   const publish = async()=>{
     let text = msg;
+    if (text.length === 0)return;
     setMsg('');
     await addDoc(collection(db, 'posts'), {
         date: serverTimestamp(),
@@ -16,8 +17,15 @@ function Post({setLoading}) {
         text: text,
         username: user.displayName,
         img: user.photoURL,
+        category: getHashTag(text),
     })
-    setLoading(true);
+    refresh();
+  }
+
+  const getHashTag = (text)=>{
+    let parts = text.split('#');
+    let hashtag = parts[1].split(' ')[0];
+    return hashtag;
   }
   
     return (
@@ -30,18 +38,18 @@ function Post({setLoading}) {
             </div>
             <div className="ml-3">
                 <p className="text-base leading-6 font-medium color-1">
-                {user.displayName} 
-                <span className="p-1 text-sm leading-5 font-medium color-2">
-                    Now
+                    {user.displayName} 
+                    <span className="p-1 text-sm leading-5 font-medium color-2">
+                        Now
                     </span>
-                    </p>
+                </p>
             </div>
             </div>
         </a>
         </div>
         <div className="pl-16">
         <p className="text-base width-auto font-medium flex-shrink text-white">
-            <textarea className="bg-transparent border-none border-transparent focus:border-none w-5/6 h-100" placeholder='Write your post...' display='none' value={msg} onChange={(e)=>setMsg(e.target.value)}/>
+            <textarea className="bg-transparent border-none border-transparent focus:border-none w-5/6 h-100" placeholder='Write your post... #Gaming #News #Programming #Q&A #Other' display='none' value={msg} onChange={(e)=>setMsg(e.target.value)}/>
         </p>
 
 

@@ -2,21 +2,35 @@ import React, { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Feed from '../components/Feed';
 import { db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
 
 function UserPage() {
   let uid =  useParams().uid;
   const [user, setUser] = useState(null);
   const [loading, setloading] = useState(true)
+  const [posts, setPosts] = useState([]);
 
   const getUserData = async()=>{
     const snap = await getDoc(doc(db, 'users', uid));
     setUser(snap.data());
     setloading(false);
     console.log(user);
+    refresh();
   }
   loading && getUserData();
-  
+
+  const refresh = async()=>{
+    const q = query(collection(db, 'posts'), where('id', '==', uid), orderBy('date', 'desc'))
+    const snap = await getDocs(q);
+    let rposts = [];
+    snap.forEach((doc)=>{
+        let data = doc.data();
+        data['uid'] = doc.id;
+        rposts.push(data);
+    })
+    setPosts(rposts);
+  }
+
   return (
     <>
         <div className='bg-color-3 rounded-lg my-5'>
@@ -36,7 +50,7 @@ function UserPage() {
                 </div>
             </div>
         </div>
-        <Feed userID={uid}/>
+        {posts && <Feed fposts={posts} refresh={refresh}/>}
     </>
   )
 }

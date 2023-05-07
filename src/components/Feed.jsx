@@ -1,37 +1,13 @@
-import { doc, getDocs, limit, query, collection, orderBy, updateDoc, arrayUnion, addDoc, serverTimestamp, where} from 'firebase/firestore'
+import { doc, getDocs, query, collection, orderBy, updateDoc, arrayUnion, addDoc, serverTimestamp, increment} from 'firebase/firestore'
 import {auth, db} from '../firebase'
 import React, {useState} from 'react'
-import Post from './Post';
 import { useAuthState } from 'react-firebase-hooks/auth';
 
-function Feed({userID}) {
-  const [posts, setPosts] = useState([]);
+function Feed({fposts, refresh}) {
   const [open, setOpen] = useState('');
   const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [user] = useAuthState(auth);
-  
-  const getFeed = async()=>{
-    let q = query(collection(db, 'posts'), orderBy('date', 'desc'), limit(100));
-
-    if(userID.length>0){
-      q = query(collection(db, 'posts'), where('id', '==', userID), orderBy('date', 'desc'), limit(100));
-    }
-
-    const querySnapshot = await getDocs(q);
-    const msgs = [];
-    querySnapshot.forEach(async (doc)=>{
-      let data = doc.data();
-      data['uid'] = doc.id;
-        msgs.push(data);
-    })
-    setPosts(msgs);
-    setLoading(false);
-    console.log('update');
-  }
-
-  loading && getFeed();
 
   function dateCovert(day, month){
     let m = '';
@@ -90,11 +66,19 @@ function Feed({userID}) {
     return string;
   }
 
-  const like = async(id, e)=>{
+  const like = async(id, category, e)=>{
     await updateDoc(doc(db, 'posts', id), {
       likes: arrayUnion(user.uid),
     });
-    getFeed();
+
+    await updateDoc(doc(db, 'users', user.uid), {
+      'recommendation.Gaming': increment(category==='Gaming' ? 1 : 0),
+      'recommendation.News': increment(category==='News' ? 1 : 0),
+      'recommendation.Programming': increment(category==='Programming' ? 1 : 0),
+      'recommendation.Q&A': increment(category==='Q&A' ? 1 : 0),
+      'recommendation.Other': increment(category==='Other' ? 1 : 0),
+    })
+    refresh();
   }
 
   const openComment = async(uid)=>{
@@ -118,7 +102,7 @@ function Feed({userID}) {
     setText('');
   }
 
-  const share = async(uid)=>{
+  const share = async(uid, category)=>{
     await addDoc(collection(db, 'posts', uid, 'comments'), {
       date: serverTimestamp(),
       id: user.uid,
@@ -137,16 +121,21 @@ function Feed({userID}) {
     await updateDoc(doc(db, 'posts', uid), {
       comments: comms.length,
     });
-    getFeed();
+    await updateDoc(doc(db, 'users', user.uid), {
+      'recommendation.Gaming': increment(category==='Gaming' ? 1 : 0),
+      'recommendation.News': increment(category==='News' ? 1 : 0),
+      'recommendation.Programming': increment(category==='Programming' ? 1 : 0),
+      'recommendation.Q&A': increment(category==='Q&A' ? 1 : 0),
+      'recommendation.Other': increment(category==='Other' ? 1 : 0),
+    })
+    refresh();
     setText('');
   }
   
   return (
     <>
-      {userID==='' && <Post setLoading={setLoading}/>}
-      {loading && <div className='color-1'>Loading...</div>}
       {
-        posts?.map((post)=>(
+        fposts?.map((post)=>(
           <div key={post['uid']} className='bg-color-3 rounded-lg my-5'>
             <div className="flex flex-shrink-0 p-4 pb-0">
               <a href={'/user/' + post.id}className="flex-shrink-0 group block">
@@ -178,7 +167,7 @@ function Feed({userID}) {
                             </div>
                           </div>
                           <div className="text-center">
-                              <button onClick={post.likes.indexOf(user.uid)>=0 ? null : (e)=>{like(post['uid'], e)}} className="w-12 mt-1 group flex items-center color-1 px-3 py-2 text-base leading-6 font-medium rounded-full hoverbtn">
+                              <button onClick={post.likes.indexOf(user.uid)>=0 ? null : (e)=>{like(post['uid'], post.category, e)}} className="w-12 mt-1 group flex items-center color-1 px-3 py-2 text-base leading-6 font-medium rounded-full hoverbtn">
                                <svg className="text-center h-7 w-6" fill={post.likes.indexOf(user.uid)>=0 ? '#cbe4de' : 'none'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" stroke="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
                               </button>
                           </div>
@@ -224,7 +213,7 @@ function Feed({userID}) {
                       <div className="w-full">
                           <div className="flex justify-end items-center">
                               <div className="text-center">
-                              <button onClick={()=>share(post['uid'])} className='bg-color-2 text-white px-5 py-1 m-2 rounded-full'>Share</button>
+                              <button onClick={()=>share(post['uid'], post.category)} className='bg-color-2 text-white px-5 py-1 m-2 rounded-full'>Share</button>
                               </div>           
                           </div>
                       </div>
